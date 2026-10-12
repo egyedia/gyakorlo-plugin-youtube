@@ -1,0 +1,36 @@
+{
+  "id": "youtube",
+  "name": "YouTube",
+  "version": "1.0.0",
+  "api": 1,
+  "category": "source",
+  "main": "index.js",
+  "description": "YouTube links: the video and its sound are downloaded into the library with yt-dlp (it needs ffmpeg: brew install ffmpeg).",
+  "author": "Attila Egyedi",
+  "homepage": "https://github.com/egyedia/gyakorlo-plugin-youtube",
+  "settings": [
+    { "key": "videoHeight", "label": "Video quality", "type": "select", "default": 1080,
+      "options": [[480, "480p"], [720, "720p"], [1080, "1080p (Full HD)"], [1440, "1440p (2K)"], [2160, "2160p (4K)"], [4320, "the best there is"]] },
+    { "key": "audioQuality", "label": "Audio quality", "type": "select", "default": "best",
+      "description": "YouTube’s best audio is usually Opus, better than its AAC stream. It is downloaded and made AAC for the video file. “As it is” keeps the AAC stream without re-encoding.",
+      "options": [["best", "The best audio, as AAC 256 k"], ["best320", "The best audio, as AAC 320 k"], ["aac", "YouTube’s AAC stream, as it is"]] }
+  ],
+  "i18n": {
+    "hu": {
+      "YouTube links: the video and its sound are downloaded into the library with yt-dlp (it needs ffmpeg: brew install ffmpeg).": "YouTube-linkek: a videó és a hangja a könyvtárba töltődik a yt-dlp-vel (ffmpeg kell hozzá: brew install ffmpeg).",
+      "A YouTube link": "YouTube-link",
+      "paste it here, or anywhere in the window (⌘V)": "illeszd be ide, vagy bárhová az ablakban (⌘V)",
+      "YouTube link…": "YouTube-link…",
+      "Video quality": "Videó minősége",
+      "Audio quality": "Hang minősége",
+      "the best there is": "a legjobb, ami van",
+      "YouTube’s best audio is usually Opus, better than its AAC stream. It is downloaded and made AAC for the video file. “As it is” keeps the AAC stream without re-encoding.": "A YouTube legjobb hangja általában Opus, jobb az AAC-folyamánál. Letöltjük, és AAC-vé alakítjuk a videófájlhoz. Az „ahogy van” újrakódolás nélkül megtartja az AAC-folyamot.",
+      "The best audio, as AAC 256 k": "A legjobb hang, AAC 256 k-ként",
+      "The best audio, as AAC 320 k": "A legjobb hang, AAC 320 k-ként",
+      "YouTube’s AAC stream, as it is": "A YouTube AAC-folyama, ahogy van",
+      "Update yt-dlp": "A yt-dlp frissítése",
+      "Download the latest yt-dlp from its releases into the plugin’s folder; it is used before Homebrew’s. Do this when downloads stop working.": "A legújabb yt-dlp letöltése a kiadásai közül a bővítmény mappájába; ezt használjuk a Homebrew-é előtt. Akkor kell, ha a letöltések nem működnek.",
+      "Which yt-dlp?": "Melyik yt-dlp?"
+    }
+  }
+}
