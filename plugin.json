@@ -1,12 +1,12 @@
 {
   "id": "youtube",
   "name": "YouTube",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "api": 1,
   "category": "source",
   "main": "index.js",
   "description": "YouTube links: the video and its sound (in Vetito, the sound only if you like) are downloaded into the library with yt-dlp (it needs ffmpeg: brew install ffmpeg).",
-  "author": "Attila Egyedi",
+  "author": "Attila Levente EGYEDI",
   "homepage": "https://github.com/egyedia/gyakorlo-plugin-youtube",
   "settings": [
     {
