@@ -29,7 +29,7 @@ exports.activate = host => {
     return { id: j.id, title: j.title, duration: j.duration, uploader: j.uploader || j.channel || '', artist: j.artist || j.creator || '', date: ud ? `${ud.slice(0, 4)}-${ud.slice(4, 6)}-${ud.slice(6, 8)}` : null, url: j.webpage_url || url };
   }
 
-  async function download(url, dir, { height, audio, progress, signal }) {
+  async function download(url, dir, { height, audio, progress, signal, name = 'video' }) {
     const ffmpeg = host.tools.which('ffmpeg');
     if (!ffmpeg) throw new Error('ffmpeg is not installed (brew install ffmpeg)');
     fs.mkdirSync(dir, { recursive: true });
@@ -45,7 +45,7 @@ exports.activate = host => {
       ...(audioBest ? ['--postprocessor-args', `Merger+ffmpeg:-c:a aac -b:a ${kbps}k`] : []),
       '--ffmpeg-location', path.dirname(ffmpeg),
       '--write-thumbnail', '--convert-thumbnails', 'jpg',
-      '-o', path.join(dir, 'video.%(ext)s'), '-o', `thumbnail:${path.join(dir, 'thumb.%(ext)s')}`, url];
+      '-o', path.join(dir, `${name}.%(ext)s`), '-o', `thumbnail:${path.join(dir, 'thumb.%(ext)s')}`, url];
     let lastErr = null;
     // YouTube refuses a download now and then (HTTP 403): try again before giving up
     for (let attempt = 1; attempt <= 3; attempt++) {
@@ -53,13 +53,13 @@ exports.activate = host => {
         await host.tools.run(need(), args, {
           signal,
           onLine: line => {
-            if (/Destination:.*video\./.test(line) && !/thumb/.test(line)) part++;
+            if (/Destination:/.test(line) && line.includes(`${name}.`) && !/thumb/.test(line)) part++;
             const m = /\[download\]\s+([\d.]+)%/.exec(line);
             if (m) { const p = Number(m[1]) / 100; progress(part <= 1 ? p * 0.8 : 0.8 + p * 0.18, attempt > 1 ? `retry ${attempt}` : ''); }
             if (/\[Merger\]|\[VideoConvertor\]/.test(line)) progress(0.99, '');
           },
         });
-        const file = fs.readdirSync(dir).find(f => /^video\.(mp4|mkv|webm|m4a|mp3)$/i.test(f));
+        const file = fs.readdirSync(dir).find(f => new RegExp(`^${name.replace(/[^\w-]/g, '')}\\.(mp4|mkv|webm|m4a|mp3)$`, 'i').test(f));
         if (!file) throw new Error('yt-dlp finished but no file was found');
         return file;
       } catch (e) {
@@ -69,6 +69,14 @@ exports.activate = host => {
       }
     }
     throw lastErr;
+  }
+
+  // the videos of a list link, in order (a link with list=…): [{ id, title }], and the list's name
+  async function listing(url) {
+    const out = await host.tools.run(need(), ['--flat-playlist', '--no-warnings', '--print', '%(id)s\t%(playlist_title|)s\t%(title)s', url]);
+    const entries = out.trim().split('\n').filter(Boolean).map(l => { const [id, list, ...t] = l.split('\t'); return { id, list, title: t.join('\t') }; });
+    const name = entries.length > 1 ? (entries[0].list && entries[0].list !== 'NA' ? entries[0].list : entries[0].title) : null;
+    return { entries, name };
   }
 
   async function downloadSound(url, dir, { ffmpeg, progress, signal }) {
@@ -94,19 +102,30 @@ exports.activate = host => {
       description: 'paste it here, or anywhere in the window (⌘V)',
       placeholder: 'YouTube link…',
       types: ['youtube'],
-      matches: text => !!videoId(text),
+      matches: text => !!videoId(text) || (/^https?:\/\/([\w-]+\.)*(youtube\.com)\/playlist\?/i.test(String(text).trim())),
       async add({ text }) {
-        const id = videoId(text);
+        const url = text.trim();
+        // a list (a playlist, an album): all its videos, in order — only when asked, as YouTube Music links carry endless "mix" lists
+        if (host.settings.get('playlist') && /[?&]list=/.test(url)) {
+          const { entries, name } = await listing(url);
+          if (entries.length > 1) {
+            const songs = entries.map(e => host.library.get(e.id) || host.library.add({ id: e.id, title: e.title, source: { type: 'youtube', url: `https://www.youtube.com/watch?v=${e.id}`, list: url, thumbUrl: `https://i.ytimg.com/vi/${encodeURIComponent(e.id)}/mqdefault.jpg` } }));
+            host.library.save();
+            return { songs, playlist: { name, url } };
+          }
+        }
+        const id = videoId(url);
         const old = host.library.get(id);
         if (old?.file) return { songs: [old], existed: true };
-        const inf = await info(text.trim());
+        const inf = await info(url);
         const song = host.library.add({ id: inf.id, title: inf.title, source: { type: 'youtube', url: inf.url, uploader: inf.uploader, artist: inf.artist, date: inf.date, duration: inf.duration, thumbUrl: `https://i.ytimg.com/vi/${encodeURIComponent(inf.id)}/mqdefault.jpg` } });
         host.library.save();
         return { songs: [song] };
       },
-      async fetch(song, { folder, signal, progress }) {
-        const soundOnly = host.app === 'vetito' && host.settings.get('what') === 'sound';
-        const file = await download(song.source.url, folder, { height: host.settings.get('videoHeight'), audio: soundOnly ? 'only' : host.settings.get('audioQuality'), progress, signal });
+      // another quality (Vetito's "Get it in 4K"): height, and a name of its own so the first file stays
+      async fetch(song, { folder, signal, progress, height, name }) {
+        const soundOnly = !height && host.app === 'vetito' && host.settings.get('what') === 'sound';
+        const file = await download(song.source.url, folder, { height: height || host.settings.get('videoHeight'), audio: soundOnly ? 'only' : host.settings.get('audioQuality'), progress, signal, name: name || 'video' });
         return { file, thumb: fs.existsSync(path.join(folder, 'thumb.jpg')) ? 'thumb.jpg' : null };
       },
       // what an older song lacks (the artist, the date) — looked up once

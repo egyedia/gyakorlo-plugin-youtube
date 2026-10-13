@@ -16,5 +16,35 @@ eq([src.kind, src.types, src.matches('https://youtu.be/gNdXw0Iu2cM'), src.matche
 eq(got.actions.map(a => a.id), ['which', 'update'], 'its buttons: which yt-dlp, update yt-dlp');
 
 eq(require('./plugin.json').apps, ['gyakorlo', 'vetito'], 'for both apps');
-console.log(failures ? `\n${failures} failed` : '\nyoutube plugin: all passed');
-process.exitCode = failures ? 1 : 0;
+// a list link, with "Whole playlist" on: all its videos, in order, and the list's name
+(async () => {
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const added = [], settings = { playlist: true, videoHeight: 1080 };
+  const calls = [];
+  const fake = {
+    app: 'vetito', plugin: { dataDir: os.tmpdir() }, settings: { get: k => settings[k] },
+    tools: {
+      which: n => `/usr/bin/${n}`,
+      run: async (bin, args, opts) => {
+        calls.push(args);
+        if (args.includes('--flat-playlist')) return 'aaaaaaaaaaa\tMy list\tOne\nbbbbbbbbbbb\tMy list\tTwo\n';
+        const o = args[args.indexOf('-o') + 1];
+        fs.writeFileSync(o.replace('%(ext)s', 'mp4'), 'x');
+        return '';
+      },
+    },
+    library: { get: () => null, add: m => (added.push(m), { ...m, file: null }), save() {} },
+  };
+  const src2 = activate(fake).sources[0];
+  const r = await src2.add({ text: 'https://www.youtube.com/watch?v=aaaaaaaaaaa&list=PL123' });
+  eq([r.songs.map(x => x.id), r.playlist?.name], [['aaaaaaaaaaa', 'bbbbbbbbbbb'], 'My list'], 'a list link with Whole playlist on: its videos in order, and the list');
+  eq(src2.matches('https://www.youtube.com/playlist?list=PL123'), true, 'a playlist page is a YouTube link too');
+  settings.playlist = false;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yt-'));
+  const got = await src2.fetch({ source: { url: 'https://youtu.be/aaaaaaaaaaa' } }, { folder: dir, progress() {}, height: 2160, name: 'video-4K' });
+  const last = calls[calls.length - 1];
+  eq([got.file, last[last.indexOf('-f') + 1].includes('height<=2160')], ['video-4K.mp4', true], 'another quality: its own height and its own file (the first one stays)');
+  fs.rmSync(dir, { recursive: true, force: true });
+  console.log(failures ? `\n${failures} failed` : '\nyoutube plugin: all passed');
+  process.exitCode = failures ? 1 : 0;
+})();

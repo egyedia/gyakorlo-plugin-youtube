@@ -1,7 +1,7 @@
 {
   "id": "youtube",
   "name": "YouTube",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "api": 1,
   "category": "source",
   "main": "index.js",
@@ -27,6 +27,13 @@
           "The sound only"
         ]
       ]
+    },
+    {
+      "key": "playlist",
+      "label": "Whole playlist",
+      "type": "boolean",
+      "default": false,
+      "description": "A link with a list in it (a playlist, an album) brings all its videos, in order. Off: only the video of the link — YouTube Music links carry endless “mix” lists."
     },
     {
       "key": "videoHeight",
@@ -100,7 +107,9 @@
       "YouTube links: the video and its sound (in Vetito, the sound only if you like) are downloaded into the library with yt-dlp (it needs ffmpeg: brew install ffmpeg).": "YouTube-linkek: a videó és a hangja (a Vetitóban, ha akarod, csak a hang) a könyvtárba töltődik a yt-dlp-vel (ffmpeg kell hozzá: brew install ffmpeg).",
       "What to download": "Mit töltsön le",
       "The video (with its sound)": "A videót (a hangjával)",
-      "The sound only": "Csak a hangot"
+      "The sound only": "Csak a hangot",
+      "Whole playlist": "Teljes lejátszási lista",
+      "A link with a list in it (a playlist, an album) brings all its videos, in order. Off: only the video of the link — YouTube Music links carry endless “mix” lists.": "Egy listát tartalmazó link (lejátszási lista, album) az összes videóját hozza, sorrendben. Kikapcsolva: csak a link videóját — a YouTube Music linkjei végtelen „mix” listákat hordoznak."
     }
   },
   "apps": [
