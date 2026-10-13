@@ -1,5 +1,6 @@
-// The YouTube plugin for Gyakorló: a YouTube link becomes a song — the video (with its sound) and its thumbnail are
-// downloaded into the song's folder with yt-dlp. A plugin of category "source", API 1 (see Gyakorló's docs/PLUGINS.md).
+// The YouTube plugin for Gyakorló and Vetito: a YouTube link becomes a song (Gyakorló) or a video / a song in the
+// library (Vetito) — the video (with its sound), or in Vetito the sound only if so set, and its thumbnail are downloaded
+// into its own folder with yt-dlp. A plugin of category "source", API 1 (see the apps' docs/PLUGINS.md).
 const fs = require('fs');
 const path = require('path');
 
@@ -32,6 +33,8 @@ exports.activate = host => {
     const ffmpeg = host.tools.which('ffmpeg');
     if (!ffmpeg) throw new Error('ffmpeg is not installed (brew install ffmpeg)');
     fs.mkdirSync(dir, { recursive: true });
+    // the sound only (Vetito's "What to download"): YouTube's AAC sound, or its best one made AAC, as an .m4a
+    if (audio === 'only') return downloadSound(url, dir, { ffmpeg, progress, signal });
     // audio: 'best' — YouTube's best audio (usually Opus, above the AAC one) made AAC 256 k for the mp4; 'best320' — the same at
     // 320 k; 'aac' — the AAC stream as it is (no re-encoding)
     const audioBest = audio !== 'aac', kbps = audio === 'best320' ? 320 : 256;
@@ -68,6 +71,18 @@ exports.activate = host => {
     throw lastErr;
   }
 
+  async function downloadSound(url, dir, { ffmpeg, progress, signal }) {
+    await host.tools.run(need(), ['--no-playlist', '--newline', '--no-warnings', '-f', 'ba[ext=m4a]/ba', '-x', '--audio-format', 'm4a',
+      '--ffmpeg-location', path.dirname(ffmpeg), '--write-thumbnail', '--convert-thumbnails', 'jpg',
+      '-o', path.join(dir, 'audio.%(ext)s'), '-o', `thumbnail:${path.join(dir, 'thumb.%(ext)s')}`, url], {
+      signal,
+      onLine: line => { const m = /\[download\]\s+([\d.]+)%/.exec(line); if (m) progress(Number(m[1]) / 100 * 0.95, ''); },
+    });
+    const file = fs.readdirSync(dir).find(f => /^audio\.(m4a|mp3|opus|webm)$/i.test(f));
+    if (!file) throw new Error('yt-dlp finished but no file was found');
+    return file;
+  }
+
   return {
     sources: [{
       id: 'youtube',
@@ -90,7 +105,8 @@ exports.activate = host => {
         return { songs: [song] };
       },
       async fetch(song, { folder, signal, progress }) {
-        const file = await download(song.source.url, folder, { height: host.settings.get('videoHeight'), audio: host.settings.get('audioQuality'), progress, signal });
+        const soundOnly = host.app === 'vetito' && host.settings.get('what') === 'sound';
+        const file = await download(song.source.url, folder, { height: host.settings.get('videoHeight'), audio: soundOnly ? 'only' : host.settings.get('audioQuality'), progress, signal });
         return { file, thumb: fs.existsSync(path.join(folder, 'thumb.jpg')) ? 'thumb.jpg' : null };
       },
       // what an older song lacks (the artist, the date) — looked up once

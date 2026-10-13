@@ -15,5 +15,6 @@ const got = activate(host), src = got.sources[0];
 eq([src.kind, src.types, src.matches('https://youtu.be/gNdXw0Iu2cM'), src.matches('https://example.com/a.mp3')], ['link', ['youtube'], true, false], 'a link source for YouTube songs, and only YouTube links');
 eq(got.actions.map(a => a.id), ['which', 'update'], 'its buttons: which yt-dlp, update yt-dlp');
 
+eq(require('./plugin.json').apps, ['gyakorlo', 'vetito'], 'for both apps');
 console.log(failures ? `\n${failures} failed` : '\nyoutube plugin: all passed');
 process.exitCode = failures ? 1 : 0;
